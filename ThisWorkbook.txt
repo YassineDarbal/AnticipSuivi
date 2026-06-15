@@ -1,0 +1,13 @@
+Private Sub Workbook_NewSheet(ByVal Sh As Object)
+    With Application
+        .DisplayAlerts = False
+        .ScreenUpdating = False
+    End With
+    Sh.Delete
+    ThisWorkbook.Sheets("Main").Activate
+    With Application
+        .DisplayAlerts = True
+        .ScreenUpdating = True
+    End With
+    MsgBox "Désolé, l'ajout des feuilles n'est pas autorisé !"
+End Sub

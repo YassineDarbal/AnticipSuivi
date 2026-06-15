@@ -1,0 +1,476 @@
+Option Explicit
+
+Const m_Password_Sheets = "pcmdp"
+
+
+'This procedure desactivates the calculations and screenUpdating
+'Use at the start of the execution
+Sub Speed()
+    Application.Calculation = xlCalculationManual
+    Application.ScreenUpdating = False
+    
+End Sub
+
+'This procedure activates the calculations and screenUpdating
+'Use at the end of the execution
+Sub Unspeed()
+    Application.Calculation = xlCalculationAutomatic
+    Application.ScreenUpdating = True
+    
+End Sub
+
+'Function to find the last row in a worksheet
+'Can find it depending on col index or by Range Name
+Function Last_Row(ws As Worksheet, Optional col_nb As Long = 1) As Long
+
+    Call Disable_Filters(ws)
+    
+    Last_Row = IIf(ws.Cells(Rows.Count, col_nb).Value = vbNullString, ws.Cells(Rows.Count, col_nb).End(xlUp).Row, Rows.Count)
+End Function
+
+
+'Function to find the column row in a worksheet
+Function Last_Col(ws As Worksheet, Optional row_nb As Long = 1) As Long
+    Last_Col = IIf(ws.Cells(row_nb, Columns.Count).Value = vbNullString, ws.Cells(row_nb, Columns.Count).End(xlToLeft).Column, Columns.Count)
+End Function
+
+'Function that return the RANGE given a NAMED RANGE
+'Purpose: Easy to remember. Using Range directly will generate error if the active workbook is not this workbook
+Function RangeN(Name As String) As Range
+    On Error GoTo isDynamicNamedRange
+        'For Static Named Ranges
+        Set RangeN = ThisWorkbook.Names(Name).RefersToRange
+        Exit Function
+        
+isDynamicNamedRange:
+    'For Dynamic Named Ranges
+    Resume continueError
+continueError:
+    On Error GoTo isDynamicNamedRangeActivateWB
+    Set RangeN = Range(Name)
+    Exit Function
+    
+isDynamicNamedRangeActivateWB:
+    'For Dynamic Named Ranges + Activate
+    On Error GoTo 0
+    ThisWorkbook.Activate
+    Set RangeN = Range(Name)
+
+End Function
+
+
+'function that Returns the whole column Range
+Function RangeALL(ws As Worksheet, col As Long, Optional start_row As Long) As Range
+    Set RangeALL = ws.Range(ws.Cells(start_row, col), ws.Cells(Last_Row(ws), col))
+End Function
+
+
+'Function that disable filters on a worksheet
+Function Disable_Filters(ws As Worksheet)
+
+    If ws.AutoFilterMode Then ws.Cells.AutoFilter
+End Function
+
+
+
+'This function Takes a double and returns an integer
+Public Function HHMMtoMin(a As Double) As Integer
+HHMMtoMin = Format(WorksheetFunction.Ceiling(a * 1440, 1), "0") '24 * 60
+
+End Function
+
+
+'This function converts a range to values
+'Replacing all formulas to their calculated values
+Sub To_Values(ByRef r As Range)
+    Dim appCalc As Long
+    Dim cell As Range
+
+    
+    appCalc = Application.Calculation
+    Application.Calculation = xlCalculationManual
+    r.Calculate
+    
+    For Each cell In r
+        cell.Value = cell.Value
+    Next cell
+    Application.Calculation = appCalc
+End Sub
+
+
+
+'This fonction Locks the sheets with the password m_Password_Sheets
+Sub lockFile()
+        Dim wks As Worksheet
+        For Each wks In ThisWorkbook.Worksheets
+            wks.Protect AllowFiltering:=True, AllowUsingPivotTables:=True, Password:=m_Password_Sheets, UserInterfaceOnly:=True
+        Next wks
+End Sub
+'This fonction unLocks the sheets with the password m_Password_Sheets
+Sub unlockFile()
+        Dim wks As Worksheet
+        For Each wks In ThisWorkbook.Worksheets
+            wks.Unprotect Password:=m_Password_Sheets
+        Next wks
+End Sub
+
+
+
+'Function that prompts the user to open an excel file
+'It returns a workbook
+Function Open_File(Optional isReadonly As Boolean = True) As Workbook
+    Dim Filter As String, Title As String
+    Dim FilterIndex As Integer
+    Dim Filename As Variant
+    
+    Filter = "All Files (*.*),*.*" '"Excel Files (*.xls),*.xls," & _
+
+    With Application
+        Filename = .GetOpenFilename(Filter, FilterIndex, Title)
+        ChDrive (Left(.DefaultFilePath, 1))
+        ChDir (.DefaultFilePath)
+    End With
+    
+    If Filename = False Then
+        Exit Function
+    End If
+    
+    Set Open_File = Workbooks.Open(Filename, False, isReadonly)
+    
+End Function
+
+'Function that send mails via Outlook
+'to_dest = TO email field
+'cc_dest = CC email field
+'subjet = SUBJET field
+'Body = Body Field
+'[dont_send] = Using TRUE will display the email but not send it. Using FALSE will send it automatically
+Sub Send_mail(to_dest As String, cc_dest As String, subject As String, Body As String, Optional dont_send As Boolean = False)
+
+    Dim MyEmailAddress As String
+    Dim olapp As Outlook.Application
+    Set olapp = New Outlook.Application
+    Dim olMail As Object
+    Dim olNs As Outlook.Namespace
+    Set olNs = olapp.GetNamespace("MAPI")
+    
+    'olNs.Logon
+    'MyEmailAddress = olNs.CurrentUser.AddressEntry.GetExchangeUser.PrimarySmtpAddress
+    
+    
+    Set olMail = olapp.CreateItem(olMailItem)
+    olMail.To = to_dest
+    olMail.CC = cc_dest & ";" & MyEmailAddress
+    'olMail.BCC = strEmailBCC
+    olMail.subject = subject
+    olMail.Body = Body
+    If dont_send = True Then
+        olMail.Display
+    Else
+        olMail.Send
+    End If
+End Sub
+
+'Replacement for MsgBox() [to be used with AutoMACRO]
+Function MsgBoxN(msg As String, Optional isGood As Boolean = True)
+
+    Dim wbMsg As Workbook
+    Set wbMsg = Workbooks.Add
+    Dim wsMsg As Worksheet
+    Set wsMsg = wbMsg.Sheets(1)
+    
+    'Merge - creating our msg space:
+    With wsMsg.Range("A1:P38")
+        .HorizontalAlignment = xlCenter
+        .VerticalAlignment = xlCenter
+        .WrapText = False
+        .Orientation = 0
+        .AddIndent = False
+        .IndentLevel = 0
+        .ShrinkToFit = False
+        .ReadingOrder = xlContext
+        .MergeCells = True
+    End With
+    
+    'Writing out the message:
+    wsMsg.Range("A1") = msg
+    
+    'Fixing font:
+    With wsMsg.Range("A1").Font
+        .Name = "Calibri"
+        .Size = 28
+        .Strikethrough = False
+        .Superscript = False
+        .Subscript = False
+        .OutlineFont = False
+        .Shadow = False
+        .Underline = xlUnderlineStyleNone
+        .ThemeColor = xlThemeColorDark1
+        .TintAndShade = 0
+        .ThemeFont = xlThemeFontMinor
+    End With
+    
+    'Red for bad, Green for good:
+    With wsMsg.Range("A1").Interior
+        .Pattern = xlSolid
+        .PatternColorIndex = xlAutomatic
+        If isGood = True Then
+            .Color = 5287936
+        Else
+            .Color = 255
+        End If
+    End With
+
+End Function
+
+'Gets the latest file in a directory - this was used to pull out the latest CSV extract [Source: AutoDS] - Change CSV if it will be used with something else.
+Function GetLatestFileInDirFullPath(maindir As String, Optional containsMask As String = "") As String
+
+    'Declare the variables
+    Dim MyFile As String
+    Dim LatestFile As String
+    Dim LatestDate As Date
+    Dim LMD As Date
+    
+    'Make sure that the path ends in a backslash
+    'If Right(maindir, 1) <> "\" Then maindir = maindir & "\"
+    
+    'Get the first Excel file from the folder
+    MyFile = Dir(maindir & "*.*", vbNormal)
+    
+    
+    'If no files were found, exit the sub
+    If Len(MyFile) = 0 Then
+        'MsgBox ("No files were found...")
+        Exit Function
+    End If
+    
+    'Loop through each Excel file in the folder
+    Do While Len(MyFile) > 0
+        If MyFile Like containsMask Then
+            'Assign the date/time of the current file to a variable
+            LMD = FileDateTime(maindir & MyFile)
+            
+            'If the date/time of the current file is greater than the latest
+            'recorded date, assign its filename and date/time to variables
+            If LMD > LatestDate Then
+                LatestFile = MyFile
+                LatestDate = LMD
+            End If
+        End If
+        'Get the next Excel file from the folder
+        MyFile = Dir
+        
+    Loop
+    
+    If LatestFile = "" Then
+        'MsgBox ("No files were found...")
+        Exit Function
+    End If
+    
+    'Open the latest file satifying the criteria
+    GetLatestFileInDirFullPath = maindir & LatestFile
+        
+End Function
+
+
+'Function that converts column numbers to letters
+'Purpose: Usefull when looping through value and using RANGE("X
+Function ColumnLetter(ColumnNumber As Long) As String
+    Dim n As Long
+    Dim c As Byte
+    Dim s As String
+
+    n = ColumnNumber
+    Do
+        c = ((n - 1) Mod 26)
+        s = Chr(c + 65) & s
+        n = (n - c) \ 26
+    Loop While n > 0
+    ColumnLetter = s
+End Function
+
+'Precedure for calculating fields in an easy way
+'It tasks into consiteration the start and end of the column
+'Example SmartCalculatedColumn("= Max(@,@)", "rng_CreationDate/rng_ManufEng", "rng_D2InflowDate")
+'    ==> Max (rng_CreationDate,rng_ManufEng) will be placed in the column whose header is rng_D2InflowDate
+Sub SmartCalculatedColumn(formula As String, strNamedRangesArgs As String, strResultRange As String, Optional isValue As Boolean = True, Optional endRow As Long = -1)
+
+    Dim argCount As Long, i As Long
+    argCount = UBound(Split(strNamedRangesArgs, "/"))
+    Dim arrArgs() As Range
+    ReDim arrArgs(0 To argCount)
+    For i = 0 To argCount
+        Set arrArgs(i) = RangeN(CStr(Split(strNamedRangesArgs, "/")(i)))
+    Next i
+    
+    Dim rngResult As Range
+    Set rngResult = RangeN(strResultRange)
+    
+    
+    Dim wsThis As Worksheet
+    Set wsThis = arrArgs(1).Name.RefersToRange.Worksheet
+    
+    Call Disable_Filters(wsThis)
+    
+    Dim strResultingFormula As String
+    strResultingFormula = formula
+    
+    For i = LBound(arrArgs()) To UBound(arrArgs())
+        strResultingFormula = Replace(strResultingFormula, "@", "RC" & arrArgs(i).Cells(1, 1).Column, , 1)
+    Next i
+    
+    
+    Dim colResult As Long, startRow As Long
+    colResult = rngResult.Column
+    startRow = rngResult.Row + 1
+    
+    If endRow = -1 Then
+        endRow = wsThis.UsedRange.Rows.Count
+    End If
+    
+    With wsThis
+        .Range(.Cells(startRow, colResult), .Cells(endRow, colResult)).FormulaR1C1 = strResultingFormula
+        If isValue Then
+            Call To_Values(.Range(.Cells(startRow, colResult), .Cells(endRow, colResult)))
+        End If
+    End With
+    
+
+End Sub
+
+
+'Adds a comment about execution in a selected RANGE NAME
+'Two Types:
+'   rngByValue:     Changes the value of the range
+'   rngByComment:   Changes the comment of the range
+Sub Add_Comment(Optional rngByValue As Range = Nothing, Optional rngByComment As Range = Nothing)
+    If Not rngByValue Is Nothing Then
+        With rngByValue
+            .Value = "Exécutée: " & Now & Chr(10) & "Par: " & Application.UserName
+            .Offset(-1, 0).Value = Now
+        End With
+    End If
+    
+    If Not rngByComment Is Nothing Then
+        With rngByComment
+        If .Comment Is Nothing Then .AddComment
+            .Comment.Visible = False
+            .Comment.Text Text:="Macro Exécutée le:" & Chr(10) & Now & Chr(10) & "Par: " & Application.UserName
+        End With
+    End If
+
+End Sub
+
+'This procedure makes a "Screen Shot" of the RANGE and saves it on the nameFile PATH of the temp directory
+Sub createPNG(Plage As Range, nameFile As String)
+
+
+    Plage.CopyPicture
+    
+    With ThisWorkbook.ActiveSheet.ChartObjects.Add(Plage.Left, Plage.Top + 200, Plage.Width, Plage.Height)
+        .Name = "CHART1"
+        ActiveSheet.Shapes("CHART1").line.Visible = msoFalse
+        .Activate
+        Plage.CopyPicture
+        .Chart.Paste
+        .Chart.Export Environ$("temp") & "\" & nameFile & ".png", "PNG"
+    End With
+    ActiveSheet.ChartObjects(ActiveSheet.ChartObjects.Count).Delete
+
+
+End Sub
+
+'This function returns the Temp FULL Path given the filename
+Function getPNG(Filename As String) As String
+    Dim TempFilePath As String
+    TempFilePath = Environ$("temp") & "\"
+    getPNG = TempFilePath & Filename & ".png"
+End Function
+
+'This function returns the folder given a fullpath
+Function GetDirectory(path As String)
+   GetDirectory = Left(path, InStrRev(path, "\"))
+End Function
+
+'This function returns the folder given a fullpath ("C:\ABC.xls" > "ABC")
+Function GetBaseNameFromPath(path As String)
+    Dim objFSO As Object
+    Dim objFile As Object
+    
+    Set objFSO = CreateObject("Scripting.FileSystemObject")
+    Set objFile = objFSO.GetFile(path)
+    
+    GetBaseNameFromPath = objFSO.GetBaseName(objFile)
+End Function
+
+
+'Set objFSO = CreateObject(“Scripting.FileSystemObject”)
+'
+'Set objFile = objFSO.GetFile(“C:\Scripts\Test.txt”)
+'
+'
+'Wscript.Echo “Absolute path: ” & objFSO.GetAbsolutePathName(objFile)
+'
+'Wscript.Echo “Parent folder: ” & objFSO.GetParentFolderName(objFile)
+'
+'Wscript.Echo “File name: ” & objFSO.GetFileName(objFile)
+'
+'Wscript.Echo “Base name: ” & objFSO.GetBaseName(objFile)
+'
+'Wscript.Echo “Extension name: ” & objFSO.GetExtensionName(objFile)
+Function InsertListValidation(ws As Worksheet, Row As Long, col As Long, listName As String, TtlSaisi As String, TtlError As String, msgSaisi As String, msgError As String)
+    
+    
+    
+    
+    Dim rng As Range
+    Set rng = ws.Cells(Row, col)
+    
+    With rng.Validation
+        .Delete
+        .Add Type:=xlValidateList, AlertStyle:=xlValidAlertStop, Operator:=xlBetween, Formula1:="=" & listName
+        .IgnoreBlank = True
+        .InCellDropdown = True
+        .InputTitle = TtlSaisi
+        .ErrorTitle = TtlError
+        .InputMessage = msgSaisi
+        .ErrorMessage = msgError
+        .ShowInput = True
+        .ShowError = True
+    End With
+    
+End Function
+
+
+Function EstProtegee(ws As Worksheet) As Boolean
+
+        EstProtegee = ws.ProtectContents = True
+        
+End Function
+
+Function UnprotectSheet(ws As Worksheet)
+    
+    Dim TestProtection As Boolean
+    
+    TestProtection = EstProtegee(ws)
+    
+    If TestProtection = True Then
+        ws.Unprotect
+    End If
+    
+End Function
+
+Function protectSheet(ws As Worksheet)
+    
+    Dim TestProtection As Boolean
+    
+    TestProtection = EstProtegee(ws)
+    
+    If TestProtection = False Then
+        ws.Protect
+    End If
+    
+End Function
+
+

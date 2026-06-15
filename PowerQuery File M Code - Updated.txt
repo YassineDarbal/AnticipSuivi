@@ -1,0 +1,100 @@
+let
+    Source = Sql.Database("SL000113.one.ad,60001", "KITFOLLOWUP_PRD", [Query="
+SELECT
+  Table__224.JOBCARDHEADER_NUMBER,
+  CAST(CAST(Table__224.JOBCARDHEADER_CREATEDATE AS DATE) AS datetime)                       AS [Creation date (DD/MM/YYYY)],
+  dbo.SITE.SITE_LABEL,
+  Table__224.JOBCARDHEADER_AIRCRAFTNUMBER,
+  HARNESS_Jobcard.HARNESS_CODE,
+  dbo.PREPARATION.PREPARATION_REALTIME,
+  HARNESS_MNGMT_PROGRAM.PROGRAM_LABEL,
+  Aircraft_location.SITE_LABEL                                                              AS Aircraft_location_SITE_LABEL,
+  dbo.JOBCARDHEADER_HARNESS_XREF.JOBCARDHEADER_HARNESS_XREF_SERIALNUMBER,
+  Table__224.JOBCARDHEADER_PREPDESCRIPTION,
+  IMPUTATION.CODEVALUE_LABELFR,
+  dbo.LASTCOMMENTView.COMMENT_LABEL,
+  Installation_Site.SITE_LABEL                                                              AS Installation_SITE_LABEL,
+  dbo.DOCUMENT.DOCUMENT_REFERENCE,
+  dbo.DOCUMENT.DOCUMENT_TYPE,
+  dbo.LASTSTATUSView.STATUS_LABELFR,
+  LTRIM(RTRIM(MAJOR_DOC_TYPE.CODEVALUE_LABELFR))                                            AS [Trim Major document_Type (French)],
+  Preparation_User.KFUUSER_FULLNAME,
+  CAST(CAST(DELIVERY_PROD_CUSTLABS.DELIVERY_SENDINGDATE AS DATE) AS datetime)               AS [Delivery sending date PROD-> CUSTL],
+  CAST(CAST(Table__224.JOBCARDHEADER_GOALDATE AS DATE) AS datetime)                         AS [Goal Date],
+  CAST(CAST(Table__224.JOBCARDHEADER_FORECASTDATE AS DATE) AS datetime)                     AS [Forecast date (DD/MM/YYYY)],
+  Table__224.JOBCARDHEADER_CATEGORIZATION,
+  dbo.LASTSTATUSView.LOGSTATUS_CREATEDATE,
+  CAST(CAST(dbo.LASTSTATUSView.LOGSTATUS_CREATEDATE AS DATE) AS datetime)                   AS [Update date of last status (DD/MM/YYYY)],
+  dbo.PROGRESS.PROGRESS_PROGPROD,
+  dbo.View_JOBCARD_MAJOR_DOC.DOC_REF1,
+  SYSDATETIMEOFFSET()                                                                       AS ExtractionDateTime
+FROM
+  ((((((((((((((((((( SELECT dbo.JOBCARDHEADER.*, dbo.PROGRAM.PROGRAM_MILITARY as JobcardMilitaryRigts
+FROM dbo.JOBCARDHEADER left outer join dbo.PROGRAM on dbo.PROGRAM.PROGRAM_ID=dbo.JOBCARDHEADER.JOBCARDHEADER_PROGRAM
+WHERE (dbo.JOBCARDHEADER.JOBCARDHEADER_ACTIVE = 1)) Table__224 LEFT OUTER JOIN dbo.SITE ON (dbo.SITE.SITE_ID=Table__224.JOBCARDHEADER_CREATESITE) ) RIGHT OUTER JOIN dbo.DOCUMENT ON (Table__224.JOBCARDHEADER_ID=dbo.DOCUMENT.DOCUMENT_JOBCARDHEADER) ) LEFT OUTER JOIN dbo.LASTSTATUSView ON (dbo.LASTSTATUSView.LOGSTATUS_JOBCARD=Table__224.JOBCARDHEADER_ID) ) LEFT OUTER JOIN dbo.PREPARATION ON (Table__224.JOBCARDHEADER_ID=dbo.PREPARATION.PREPARATION_JOBCARDHEADER and Table__224.JOBCARDHEADER_ACTIVE=dbo.PREPARATION.PREPARATION_ACTIVE) ) LEFT OUTER JOIN dbo.SITE  Installation_Site ON (Installation_Site.SITE_ID=Table__224.JOBCARDHEADER_INSTALPLANT) ) FULL OUTER JOIN dbo.KFUUSER  Preparation_User ON (Preparation_User.KFUUSER_ID=Table__224.JOBCARDHEADER_PREPARUSER) ) LEFT OUTER JOIN dbo.PROGRESS ON (Table__224.JOBCARDHEADER_ID=dbo.PROGRESS.PROGRESS_JOBCARDHEADER) ) LEFT OUTER JOIN dbo.LASTCOMMENTView ON (dbo.LASTCOMMENTView.COMMENT_JOBCARDHEADER=Table__224.JOBCARDHEADER_ID) ) FULL OUTER JOIN dbo.CODEVALUE  IMPUTATION ON (Table__224.JOBCARDHEADER_IMPUTATION=IMPUTATION.CODEVALUE_VALUE and IMPUTATION.CODEVALUE_CODE='IMPUTATION') ) FULL OUTER JOIN dbo.SITE  Aircraft_location ON (Aircraft_location.SITE_ID=Table__224.JOBCARDHEADER_ACLOCATION) ) LEFT OUTER JOIN dbo.MAJORDOCUMENTGroupByJOBCARDView ON (Table__224.JOBCARDHEADER_ID=dbo.MAJORDOCUMENTGroupByJOBCARDView.DOCUMENT_JOBCARDHEADER) )
+  LEFT OUTER JOIN dbo.CODEVALUE  MAJOR_DOC_TYPE ON (dbo.MAJORDOCUMENTGroupByJOBCARDView.DOCUMENT_TYPE = MAJOR_DOC_TYPE.CODEVALUE_VALUE  and MAJOR_DOC_TYPE.CODEVALUE_CODE='TYPEDOC') ) FULL OUTER JOIN dbo.JOBCARDHEADER_HARNESS_XREF ON (Table__224.JOBCARDHEADER_ID=dbo.JOBCARDHEADER_HARNESS_XREF.JOBCARDHEADER_HARNESS_XREF_JOBCARDHEADER and Table__224.JOBCARDHEADER_ACTIVE=dbo.JOBCARDHEADER_HARNESS_XREF.JOBCARDHEADER_HARNESS_XREF_ACTIVE) )
+  LEFT OUTER JOIN dbo.HARNESS  HARNESS_Jobcard ON (HARNESS_Jobcard.HARNESS_ID=dbo.JOBCARDHEADER_HARNESS_XREF.JOBCARDHEADER_HARNESS_XREF_HARNESS) )
+  LEFT OUTER JOIN dbo.I_SECTION  I_SECTION_HarnessJobc ON (HARNESS_Jobcard.HARNESS_I_SECTION = I_SECTION_HarnessJobc.I_SECTION_ID and I_SECTION_HarnessJobc.I_SECTION_ACTIVE=1) )
+  LEFT OUTER JOIN dbo.PROGRAM  HARNESS_MNGMT_PROGRAM ON (HARNESS_MNGMT_PROGRAM.PROGRAM_ID=I_SECTION_HarnessJobc.I_SECTION_PROGRAM) ) LEFT OUTER JOIN dbo.View_JOBCARD_MAJOR_DOC ON (Table__224.JOBCARDHEADER_ID=dbo.View_JOBCARD_MAJOR_DOC.DOCUMENT_JOBCARDHEADER) ) LEFT OUTER JOIN ( select DELIVERY_ID, DELIVERY_JOBCARDHEADER, DELIVERY_STEP, DELIVERY_SENDINGSITE, DELIVERY_SENDINGDATE,
+                      DELIVERY_RECEIVINGSITE, DELIVERY_RECEIVINGDATE, DELIVERY_RECEIVEUSER, DELIVERY_WITHMISSING, DELIVERY_SHIPPINGNUMBER,
+                      DELIVERY_LAST_DELIVERY, DELIVERY_ACTIVE,
+                      SENDING_SITE.SITE_ID as SENDING_SITE_ID,
+SENDING_SITE.SITE_TYPESITE as SENDING_SITE_TYPESITE,
+SENDING_SITE.SITE_CODE as SENDING_SITE_CODE,
+SENDING_SITE.SITE_LABEL as SENDING_SITE_LABEL,
+RECEIVING_SITE.SITE_ID as RECEIVING_SITE_ID,
+RECEIVING_SITE.SITE_TYPESITE as RECEIVING_SITE_TYPESITE,
+RECEIVING_SITE.SITE_CODE as RECEIVING_SITE_CODE,
+RECEIVING_SITE.SITE_LABEL as RECEIVING_SITE_LABEL
+from DELIVERY
+inner join [SITE] as SENDING_SITE ON SENDING_SITE.SITE_ID = DELIVERY_SENDINGSITE and SENDING_SITE.SITE_TYPESITE='PROD'
+inner join [SITE] as RECEIVING_SITE ON RECEIVING_SITE.SITE_ID = DELIVERY_RECEIVINGSITE and RECEIVING_SITE.SITE_TYPESITE in ('LABS','CUST')
+WHERE DELIVERY_STEP=5) DELIVERY_PROD_CUSTLABS ON (Table__224.JOBCARDHEADER_ID=DELIVERY_PROD_CUSTLABS.DELIVERY_JOBCARDHEADER) )
+WHERE
+  (
+  HARNESS_MNGMT_PROGRAM.PROGRAM_LABEL  IN  ('A351', 'A353', 'A355', 'A356')
+  AND  Table__224.JOBCARDHEADER_TYPE  NOT IN  ('LABS', 'M', 'SRM', 'W', 'WO')
+  AND  LTRIM(RTRIM(dbo.LASTSTATUSView.STATUS_LABELEN))  NOT IN  ('D3 CLOSED', 'D2 Kit Cancelled', 'D3 AIRBUS CANCELLED', 'D3 CANCELLED', 'D2 Airbus Cancelled', 'D2 Cancelled concession')
+  AND  CAST(CAST(dbo.LASTSTATUSView.LOGSTATUS_CREATEDATE AS DATE) AS datetime)  >  CAST(CAST(DATEADD(Year,-1,CURRENT_TIMESTAMP) AS datetime) AS date)
+  )"]),
+
+    #"Colonnes renommées" = Table.RenameColumns(Source, {
+        {"JOBCARDHEADER_NUMBER",                        "Jobcard Number"},
+        {"SITE_LABEL",                                  "Creation site"},
+        {"JOBCARDHEADER_AIRCRAFTNUMBER",                "Aircraft number"},
+        {"HARNESS_CODE",                                "Harness"},
+        {"PREPARATION_REALTIME",                        "Preparation Realtime"},
+        {"PROGRAM_LABEL",                               "Harness program"},
+        {"Aircraft_location_SITE_LABEL",                "Aircraft location"},
+        {"JOBCARDHEADER_HARNESS_XREF_SERIALNUMBER",     "Harness serial number"},
+        {"JOBCARDHEADER_PREPDESCRIPTION",               "Preparation description"},
+        {"CODEVALUE_LABELFR",                           "Imputation FR (French translation)"},
+        {"COMMENT_LABEL",                               "Last comment"},
+        {"Installation_SITE_LABEL",                     "Installation site"},
+        {"DOCUMENT_REFERENCE",                          "Reference"},
+        {"DOCUMENT_TYPE",                               "Type"},
+        {"STATUS_LABELFR",                              "Last Status (French)"},
+        {"KFUUSER_FULLNAME",                            "Fullname of Preparation user"},
+        {"JOBCARDHEADER_CATEGORIZATION",                "Category"},
+        {"LOGSTATUS_CREATEDATE",                        "Update date of last status (DD/MM/YYYY HH:MM:SS)"},
+        {"PROGRESS_PROGPROD",                           "Production progress (%)"},
+        {"DOC_REF1",                                    "Reference major doc 1"}
+    }),
+
+    Arrondi = Table.TransformColumns(#"Colonnes renommées", {{"Preparation Realtime", each Number.Round(_, 2), type number}}),
+
+    #"Personnalisée ajoutée" = Table.AddColumn(Arrondi, "DansScope", each null),
+
+    #"Colonnes permutées" = Table.ReorderColumns(#"Personnalisée ajoutée", {
+        "Jobcard Number", "Type", "Trim Major document_Type (French)", "Creation date (DD/MM/YYYY)",
+        "Creation site", "Fullname of Preparation user", "Harness program", "Harness serial number",
+        "Aircraft number", "Harness", "Imputation FR (French translation)", "Preparation Realtime",
+        "Aircraft location", "Preparation description", "Last comment", "Installation site",
+        "Reference", "Last Status (French)", "Delivery sending date PROD-> CUSTL", "Goal Date",
+        "Forecast date (DD/MM/YYYY)", "Production progress (%)", "Category", "DansScope",
+        "Update date of last status (DD/MM/YYYY HH:MM:SS)", "Reference major doc 1", "ExtractionDateTime"
+    }),
+
+    #"Type modifié1" = Table.TransformColumnTypes(#"Colonnes permutées", {{"ExtractionDateTime", type datetime}})
+in
+    #"Type modifié1"
