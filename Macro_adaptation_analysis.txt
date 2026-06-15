@@ -1,0 +1,37 @@
+Macro adaptation analysis for the D2D3_source change
+====================================================
+
+Summary
+-------
+Only the D2D3 extraction module requires a code adaptation for the new `D2D3_source` workflow.
+
+Why
+---
+The external D2D3 workbook selection was isolated in `Extract_D2D3_MAJ` inside `D2D3.vb`. Other modules may still open external workbooks, but those workbooks serve different workflows and are not the D2D3 input source replaced by Power Query.
+
+Files that require adaptation
+-----------------------------
+- `D2D3.vb`: adapted to refresh and read the internal `D2D3_source` sheet, validate headers, normalize D2D3 values in memory, and update the suivi sheets.
+
+Files reviewed that do not require D2D3_source adaptation
+---------------------------------------------------------
+- `JIGUpdate.vb`: still prompts for an Action Item source file. This is a separate AI workflow and not the D2D3 source workbook.
+- `Echeancier.vb`: opens dispatch/echeancier files for planning data. This is separate from D2D3 extraction.
+- `JigOrd.vb`: uses the workbook selected/configured for JIG order processing, not D2D3 input.
+- `Main.vb`: opens configuration/reference workbooks for index and solution lookup, not D2D3 input.
+- `MAgic_Jigor.vb`: opens JIGOR and MAGIC files from the Link sheet, not D2D3 input.
+- `Archive.vb`: opens the archive workbook used for delivered rows, not D2D3 input.
+- `KPI.vb`, `MAJ_BLB.vb`, and `Notification.vb`: no direct dependency on the replaced D2D3 input workbook was found.
+- `mFunctions1.txt` and `ThisWorkbook.txt`: shared helpers/workbook events; no D2D3_source-specific adaptation required.
+
+Manual implementation package
+-----------------------------
+Use the files in `macro_code_txt_exports/` if you want paste-ready `.txt` versions of the VBA modules.
+
+Recommended manual implementation order
+---------------------------------------
+1. Import or paste `macro_code_txt_exports/D2D3_updated.txt` into the existing D2D3 VBA module.
+2. Create/load a worksheet named exactly `D2D3_source` with the Power Query from `PowerQuery File M Code - Updated.txt`.
+3. Compile the VBA project.
+4. Run `Extract_D2D3_MAJ`.
+5. Only replace other modules from `macro_code_txt_exports/` if you want a full text backup/export; they do not need D2D3_source-specific changes.
